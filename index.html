@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PnL Calendar</title>
+<meta name="theme-color" content="#0e1116">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="PnL">
+<style>
+  :root{
+    --bg:#0e1116; --panel:#161b22; --panel2:#1c232c; --line:#2a323d;
+    --text:#e6edf3; --muted:#8b97a5; --green:#2ea36b; --green-bg:rgba(46,163,107,.18);
+    --red:#e5534b; --red-bg:rgba(229,83,75,.18); --accent:#4c8dff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:16px;max-width:980px;margin-inline:auto}
+  h1{font-size:18px;margin:0 0 14px;font-weight:600}
+  .bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  .bar .title{font-size:20px;font-weight:600;min-width:170px;text-align:center}
+  button,select{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px 12px;font:inherit;cursor:pointer}
+  button:hover{border-color:var(--accent)}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  button.danger{color:var(--red)}
+  .spacer{flex:1}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:8px;margin-bottom:14px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+  .stat small{display:block;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+  .stat b{font-size:17px}
+  .pos{color:var(--green)} .neg{color:var(--red)}
+  .grid{display:grid;grid-template-columns:repeat(7,1fr) 1.1fr;gap:4px}
+  .dow{color:var(--muted);font-size:11px;text-align:center;padding:4px 0;text-transform:uppercase}
+  .cell{background:var(--panel);border:1px solid var(--line);border-radius:8px;min-height:84px;padding:6px;display:flex;flex-direction:column;justify-content:space-between;cursor:pointer;position:relative;overflow:hidden}
+  .cell:hover{border-color:var(--accent)}
+  .cell.empty{background:transparent;border-color:transparent;cursor:default}
+  .cell.win{background:var(--green-bg);border-color:rgba(46,163,107,.5)}
+  .cell.loss{background:var(--red-bg);border-color:rgba(229,83,75,.5)}
+  .cell.today .d{background:var(--accent);color:#fff;border-radius:50%}
+  .d{font-size:12px;color:var(--muted);width:22px;height:22px;display:grid;place-items:center}
+  .amt{font-weight:600;font-size:14px;text-align:right}
+  .cnt{font-size:10px;color:var(--muted);text-align:right}
+  .badge{position:absolute;top:8px;right:8px;font-size:10px;color:var(--muted)}
+  .week{background:var(--panel2);border:1px solid var(--line);border-radius:8px;min-height:84px;padding:6px;display:flex;flex-direction:column;justify-content:space-between}
+  .week small{color:var(--muted);font-size:10px;text-transform:uppercase}
+  dialog{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:14px;padding:18px;width:min(460px,94vw);max-height:90vh}
+  dialog::backdrop{background:rgba(0,0,0,.6)}
+  dialog h2{margin:0 0 4px;font-size:16px}
+  .dayTotal{font-size:13px;color:var(--muted);margin-bottom:10px}
+  .dayTotal b{font-size:15px}
+  input{width:100%;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:9px;font:inherit}
+  #trades{display:flex;flex-direction:column;gap:8px;max-height:48vh;overflow:auto;padding-right:2px}
+  .trade{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px;display:grid;grid-template-columns:auto 1fr 1fr auto;gap:6px;align-items:center}
+  .trade .n{grid-column:1/-1;font-size:11px;color:var(--muted)}
+  .trade .note{grid-column:1/-1}
+  .sg{width:38px;height:38px;padding:0;font-size:18px;font-weight:700;border-radius:8px}
+  .sg.p{background:var(--green);border-color:var(--green);color:#fff}
+  .sg.l{background:var(--red);border-color:var(--red);color:#fff}
+  .x{padding:8px 10px;color:var(--muted)}
+  .row{display:flex;gap:8px;margin-top:14px}
+  .addT{width:100%;margin-top:8px;border-style:dashed}
+  @media (max-width:640px){
+    body{padding:10px}
+    .grid{gap:3px}
+    .cell,.week{min-height:66px;padding:4px}
+    .amt{font-size:11px!important}
+    .week small,.cnt,.badge{font-size:9px}
+    .bar .title{min-width:0;font-size:17px}
+  }
+</style>
+</head>
+<body>
+<h1>PnL Calendar</h1>
+
+<div class="bar">
+  <button id="prev" aria-label="Previous month">‹</button>
+  <div class="title" id="title"></div>
+  <button id="next" aria-label="Next month">›</button>
+  <button id="today">Today</button>
+  <div class="spacer"></div>
+  <select id="cur" aria-label="Currency">
+    <option value="$">$</option><option value="€">€</option><option value="£">£</option>
+    <option value="₦">₦</option><option value="">None</option>
+  </select>
+  <button id="exportCsv">CSV</button>
+  <button id="exportJson">Backup</button>
+  <button id="importJson">Restore</button>
+  <input type="file" id="file" accept="application/json" hidden>
+</div>
+
+<div class="stats" id="stats"></div>
+<div class="grid" id="grid"></div>
+
+<dialog id="dlg">
+  <h2 id="dlgTitle"></h2>
+  <div class="dayTotal">Day total: <b id="dlgTotal">–</b></div>
+  <div id="trades"></div>
+  <button type="button" class="addT" id="addT">+ Add trade</button>
+  <div class="row">
+    <button class="danger" id="clear" type="button">Clear day</button>
+    <div class="spacer"></div>
+    <button id="cancel" type="button">Cancel</button>
+    <button class="primary" id="save" type="button">Save</button>
+  </div>
+</dialog>
+
+<script>
+const KEY = 'pnl-calendar-v1';
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DOW = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+let store = { currency: '$', days: {} };
+try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.days) store = { currency: '$', ...s }; } catch (e) {}
+
+// Migrate older entries (one number per day) into a single trade.
+function normalize() {
+  for (const k of Object.keys(store.days)) {
+    const d = store.days[k];
+    if (!Array.isArray(d.trades)) {
+      store.days[k] = { trades: [{ pnl: Number(d.pnl) || 0, pair: '', note: d.note || '' }] };
+    }
+  }
+}
+normalize();
+const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(store)); } catch (e) {} };
+
+const now = new Date();
+let view = { y: now.getFullYear(), m: now.getMonth() };
+let editing = null, draft = [];
+
+const $ = id => document.getElementById(id);
+const pad = n => String(n).padStart(2, '0');
+const keyOf = (y, m, d) => `${y}-${pad(m + 1)}-${pad(d)}`;
+const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+const dayTotal = d => d.trades.reduce((a, t) => a + t.pnl, 0);
+
+function money(n, short) {
+  const c = store.currency, a = Math.abs(n);
+  const s = (short && a >= 10000) ? (a / 1000).toFixed(1) + 'k'
+    : a.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  return (n < 0 ? '-' : n > 0 ? '+' : '') + c + s;
+}
+const cls = n => n > 0 ? 'pos' : n < 0 ? 'neg' : '';
+
+function render() {
+  const { y, m } = view;
+  $('title').textContent = `${MONTHS[m]} ${y}`;
+  $('cur').value = store.currency;
+
+  const offset = (new Date(y, m, 1).getDay() + 6) % 7;
+  const dim = new Date(y, m + 1, 0).getDate();
+  const weeks = Math.ceil((offset + dim) / 7);
+  const todayKey = keyOf(now.getFullYear(), now.getMonth(), now.getDate());
+
+  let html = DOW.map(d => `<div class="dow">${d}</div>`).join('') + '<div class="dow">Week</div>';
+  let total = 0, winDays = 0, lossDays = 0, best = null, worst = null, loggedDays = 0;
+  let nTrades = 0, tWins = 0, tLosses = 0;
+
+  for (let w = 0; w < weeks; w++) {
+    let wsum = 0, wDays = 0, wTrades = 0;
+    for (let i = 0; i < 7; i++) {
+      const day = w * 7 + i - offset + 1;
+      if (day < 1 || day > dim) { html += '<div class="cell empty"></div>'; continue; }
+      const k = keyOf(y, m, day), e = store.days[k];
+      let c = 'cell', body = '';
+      if (e) {
+        const p = dayTotal(e), n = e.trades.length;
+        wsum += p; wDays++; wTrades += n; total += p; loggedDays++; nTrades += n;
+        e.trades.forEach(t => { if (t.pnl > 0) tWins++; else if (t.pnl < 0) tLosses++; });
+        if (p > 0) { winDays++; c += ' win'; } else if (p < 0) { lossDays++; c += ' loss'; }
+        if (best === null || p > best) best = p;
+        if (worst === null || p < worst) worst = p;
+        body = `<div><div class="amt ${cls(p)}">${money(p, true)}</div><div class="cnt">${n} trade${n === 1 ? '' : 's'}</div></div>`;
+      }
+      if (k === todayKey) c += ' today';
+      html += `<div class="${c}" data-k="${k}"><div class="d">${day}</div>${body}</div>`;
+    }
+    html += `<div class="week"><small>Wk ${w + 1}</small>${wDays
+      ? `<div><div class="amt ${cls(wsum)}">${money(wsum, true)}</div><div class="cnt">${wTrades} trade${wTrades === 1 ? '' : 's'}</div></div>`
+      : '<div class="amt" style="color:var(--muted)">–</div>'}</div>`;
+  }
+  $('grid').innerHTML = html;
+
+  const decided = tWins + tLosses;
+  const rate = decided ? Math.round(tWins / decided * 100) + '%' : '–';
+  const avgT = nTrades ? total / nTrades : 0;
+  $('stats').innerHTML = [
+    ['Month PnL', loggedDays ? money(total) : '–', cls(total)],
+    ['Trades', nTrades || '–', ''],
+    ['Trade win rate', rate, ''],
+    ['Win / Loss days', `${winDays} / ${lossDays}`, ''],
+    ['Best day', best === null ? '–' : money(best), cls(best)],
+    ['Worst day', worst === null ? '–' : money(worst), cls(worst)],
+    ['Avg / trade', nTrades ? money(avgT) : '–', cls(avgT)],
+  ].map(([l, v, c]) => `<div class="stat"><small>${l}</small><b class="${c}">${v}</b></div>`).join('');
+}
+
+/* ---------- Day dialog ---------- */
+function draftTotal() {
+  let sum = 0, any = false;
+  draft.forEach(t => {
+    const v = parseFloat(String(t.amount).replace(/,/g, ''));
+    if (!isNaN(v)) { sum += t.sign * Math.abs(v); any = true; }
+  });
+  const el = $('dlgTotal');
+  el.textContent = any ? money(sum) : '–';
+  el.className = any ? cls(sum) : '';
+}
+
+function renderDraft() {
+  $('trades').innerHTML = draft.map((t, i) => `
+    <div class="trade" data-i="${i}">
+      <div class="n">Trade ${i + 1}</div>
+      <button type="button" class="sg ${t.sign > 0 ? 'p' : 'l'}" data-act="sign" title="Tap to switch profit/loss">${t.sign > 0 ? '+' : '−'}</button>
+      <input data-f="amount" inputmode="decimal" placeholder="Amount" value="${esc(t.amount)}" autocomplete="off">
+      <input data-f="pair" placeholder="Pair (e.g. EURUSD)" value="${esc(t.pair)}" autocomplete="off">
+      <button type="button" class="x" data-act="del" title="Remove trade">✕</button>
+      <input class="note" data-f="note" placeholder="Note (optional)" value="${esc(t.note)}" autocomplete="off">
+    </div>`).join('');
+  draftTotal();
+}
+
+function openDay(k) {
+  editing = k;
+  const e = store.days[k];
+  const [y, mo, d] = k.split('-').map(Number);
+  $('dlgTitle').textContent = new Date(y, mo - 1, d).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  draft = e
+    ? e.trades.map(t => ({ sign: t.pnl < 0 ? -1 : 1, amount: String(Math.abs(t.pnl)), pair: t.pair || '', note: t.note || '' }))
+    : [{ sign: 1, amount: '', pair: '', note: '' }];
+  $('clear').style.visibility = e ? 'visible' : 'hidden';
+  renderDraft();
+  $('dlg').showModal();
+  if (!e) { const a = $('trades').querySelector('[data-f="amount"]'); a && a.focus(); }
+}
+
+$('trades').addEventListener('input', ev => {
+  const row = ev.target.closest('.trade'); if (!row || !ev.target.dataset.f) return;
+  draft[+row.dataset.i][ev.target.dataset.f] = ev.target.value;
+  draftTotal();
+});
+$('trades').addEventListener('click', ev => {
+  const btn = ev.target.closest('button[data-act]'); if (!btn) return;
+  const i = +btn.closest('.trade').dataset.i;
+  if (btn.dataset.act === 'sign') draft[i].sign *= -1;
+  if (btn.dataset.act === 'del') { draft.splice(i, 1); if (!draft.length) draft.push({ sign: 1, amount: '', pair: '', note: '' }); }
+  renderDraft();
+});
+$('addT').onclick = () => {
+  draft.push({ sign: 1, amount: '', pair: '', note: '' });
+  renderDraft();
+  const rows = $('trades').querySelectorAll('.trade');
+  const last = rows[rows.length - 1];
+  last.scrollIntoView({ block: 'nearest' });
+  last.querySelector('[data-f="amount"]').focus();
+};
+$('cancel').onclick = () => $('dlg').close();
+$('save').onclick = () => {
+  const trades = [];
+  draft.forEach(t => {
+    const v = parseFloat(String(t.amount).replace(/,/g, ''));
+    if (!isNaN(v)) trades.push({ pnl: t.sign * Math.abs(v), pair: t.pair.trim(), note: t.note.trim() });
+  });
+  if (trades.length) store.days[editing] = { trades }; else delete store.days[editing];
+  persist(); $('dlg').close(); render();
+};
+$('clear').onclick = () => { delete store.days[editing]; persist(); $('dlg').close(); render(); };
+
+$('grid').addEventListener('click', ev => {
+  const c = ev.target.closest('.cell[data-k]');
+  if (c) openDay(c.dataset.k);
+});
+
+$('prev').onclick = () => { view.m--; if (view.m < 0) { view.m = 11; view.y--; } render(); };
+$('next').onclick = () => { view.m++; if (view.m > 11) { view.m = 0; view.y++; } render(); };
+$('today').onclick = () => { view = { y: now.getFullYear(), m: now.getMonth() }; render(); };
+$('cur').onchange = e => { store.currency = e.target.value; persist(); render(); };
+
+/* ---------- Export / import ---------- */
+function download(name, text, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type }));
+  a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+const q = s => `"${String(s || '').replace(/"/g, '""')}"`;
+$('exportJson').onclick = () => download('pnl-backup.json', JSON.stringify(store, null, 2), 'application/json');
+$('exportCsv').onclick = () => {
+  const rows = [];
+  Object.keys(store.days).sort().forEach(k =>
+    store.days[k].trades.forEach((t, i) => rows.push(`${k},${i + 1},${q(t.pair)},${t.pnl},${q(t.note)}`)));
+  download('pnl-trades.csv', 'date,trade,pair,pnl,note\n' + rows.join('\n'), 'text/csv');
+};
+$('importJson').onclick = () => $('file').click();
+$('file').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try {
+    const s = JSON.parse(await f.text());
+    if (!s || typeof s.days !== 'object') throw 0;
+    store = { currency: s.currency ?? '$', days: s.days };
+    normalize(); persist(); render();
+  } catch (err) { alert('That file is not a valid PnL backup.'); }
+  e.target.value = '';
+};
+
+render();
+
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
