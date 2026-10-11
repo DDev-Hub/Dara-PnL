@@ -1,108 +1,358 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>PnL Calendar</title>
-<meta name="theme-color" content="#0e1116">
+<meta name="theme-color" content="#0d0a1a">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="PnL">
+<script>
+// Apply the saved theme before the page paints so there is no flash.
+try {
+  var _s = JSON.parse(localStorage.getItem('pnl-calendar-v1')) || {};
+  if (_s.theme === 'light') document.documentElement.setAttribute('data-theme', 'light');
+} catch (e) {}
+</script>
 <style>
-  :root{
-    --bg:#0e1116; --panel:#161b22; --panel2:#1c232c; --line:#2a323d;
-    --text:#e6edf3; --muted:#8b97a5; --green:#2ea36b; --green-bg:rgba(46,163,107,.18);
-    --red:#e5534b; --red-bg:rgba(229,83,75,.18); --accent:#4c8dff;
+  :root, :root[data-theme="dark"]{
+    color-scheme:dark;
+    --bg:#0d0a1a; --panel:#17122e; --panel2:#201a40; --line:#2e2757;
+    --text:#f6f4ff; --muted:#a39dc8; --purple:#8b5cf6; --accent:#b49bff;
+    --green:#34d399; --green-bg:rgba(52,211,153,.14); --green-line:rgba(52,211,153,.45);
+    --red:#fb7185; --red-bg:rgba(251,113,133,.14); --red-line:rgba(251,113,133,.45);
+    --inputbg:#0d0a1a; --navbg:rgba(18,14,38,.94); --backdrop:rgba(5,3,14,.72); --glow:rgba(109,40,217,.35);
+    --nav-h:64px;
   }
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:16px;max-width:980px;margin-inline:auto}
-  h1{font-size:18px;margin:0 0 14px;font-weight:600}
-  .bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px}
-  .bar .title{font-size:20px;font-weight:600;min-width:170px;text-align:center}
-  button,select{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px 12px;font:inherit;cursor:pointer}
-  button:hover{border-color:var(--accent)}
-  button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
-  button.danger{color:var(--red)}
-  .spacer{flex:1}
-  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:8px;margin-bottom:14px}
-  .stat{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
-  .stat small{display:block;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
-  .stat b{font-size:17px}
-  .pos{color:var(--green)} .neg{color:var(--red)}
-  .grid{display:grid;grid-template-columns:repeat(7,1fr) 1.1fr;gap:4px}
-  .dow{color:var(--muted);font-size:11px;text-align:center;padding:4px 0;text-transform:uppercase}
-  .cell{background:var(--panel);border:1px solid var(--line);border-radius:8px;min-height:84px;padding:6px;display:flex;flex-direction:column;justify-content:space-between;cursor:pointer;position:relative;overflow:hidden}
-  .cell:hover{border-color:var(--accent)}
+  :root[data-theme="light"]{
+    color-scheme:light;
+    --bg:#f5f2ff; --panel:#ffffff; --panel2:#efeaff; --line:#ddd4fa;
+    --text:#1b1235; --muted:#6c6399; --purple:#7c3aed; --accent:#7c3aed;
+    --green:#059669; --green-bg:rgba(5,150,105,.11); --green-line:rgba(5,150,105,.4);
+    --red:#e11d48; --red-bg:rgba(225,29,72,.09); --red-line:rgba(225,29,72,.38);
+    --inputbg:#ffffff; --navbg:rgba(255,255,255,.94); --backdrop:rgba(27,18,53,.45); --glow:rgba(124,58,237,.3);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  [hidden]{display:none!important}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+  button,select,input,textarea{font:inherit}
+  .app{max-width:760px;margin:0 auto;padding:14px 14px calc(var(--nav-h) + 28px + env(safe-area-inset-bottom))}
+
+  /* header */
+  .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:8px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px}
+  .logo{width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,#6d28d9,#c084fc);display:grid;place-items:center}
+  .logo svg{width:18px;height:18px;fill:#fff}
+  .tools{display:flex;align-items:center;gap:8px}
+  .pill{background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:999px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer}
+  .pill:active{background:var(--panel2)}
+  .themeb{width:36px;height:36px;border-radius:50%;background:var(--panel);border:1px solid var(--line);color:var(--text);display:grid;place-items:center;padding:0;cursor:pointer}
+  .themeb svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+  :root[data-theme="dark"] .i-moon{display:none}
+  :root[data-theme="light"] .i-sun{display:none}
+
+  /* month nav */
+  .mnav{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+  .mnav .title{flex:1;text-align:center;font-size:18px;font-weight:700}
+  .ib{width:42px;height:42px;border-radius:13px;background:var(--panel);border:1px solid var(--line);color:var(--text);font-size:20px;display:grid;place-items:center;padding:0;cursor:pointer}
+  .ib:active{background:var(--panel2)}
+
+  /* hero */
+  .hero{border-radius:20px;padding:18px;margin-bottom:16px;color:#fff;background:linear-gradient(135deg,#6d28d9 0%,#8b5cf6 55%,#c084fc 100%);box-shadow:0 10px 30px var(--glow)}
+  .hero small{display:block;opacity:.85;font-size:12px;text-transform:uppercase;letter-spacing:.07em}
+  .hero .big{font-size:32px;font-weight:800;margin:6px 0 12px;line-height:1.1}
+  .chips{display:flex;gap:8px;flex-wrap:wrap}
+  .chip{background:rgba(255,255,255,.2);border-radius:999px;padding:5px 11px;font-size:12px;font-weight:600}
+  .tgt{margin-top:14px}
+  .tgt-row{display:flex;justify-content:space-between;gap:8px;font-size:12px;margin-bottom:6px}
+  .bar{height:8px;border-radius:99px;background:rgba(255,255,255,.25);overflow:hidden}
+  .bar i{display:block;height:100%;border-radius:99px;background:#fff}
+
+  /* calendar */
+  .dows,.grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+  .dows{margin-bottom:6px}
+  .dow{text-align:center;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+  .cell{position:relative;min-width:0;min-height:60px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:5px;display:flex;flex-direction:column;justify-content:space-between;cursor:pointer;overflow:hidden}
+  .cell:active{border-color:var(--accent)}
   .cell.empty{background:transparent;border-color:transparent;cursor:default}
-  .cell.win{background:var(--green-bg);border-color:rgba(46,163,107,.5)}
-  .cell.loss{background:var(--red-bg);border-color:rgba(229,83,75,.5)}
-  .cell.today .d{background:var(--accent);color:#fff;border-radius:50%}
-  .d{font-size:12px;color:var(--muted);width:22px;height:22px;display:grid;place-items:center}
-  .amt{font-weight:600;font-size:14px;text-align:right}
-  .cnt{font-size:10px;color:var(--muted);text-align:right}
-  .badge{position:absolute;top:8px;right:8px;font-size:10px;color:var(--muted)}
-  .week{background:var(--panel2);border:1px solid var(--line);border-radius:8px;min-height:84px;padding:6px;display:flex;flex-direction:column;justify-content:space-between}
-  .week small{color:var(--muted);font-size:10px;text-transform:uppercase}
-  dialog{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:14px;padding:18px;width:min(460px,94vw);max-height:90vh}
-  dialog::backdrop{background:rgba(0,0,0,.6)}
+  .cell.win{background:var(--green-bg);border-color:var(--green-line)}
+  .cell.loss{background:var(--red-bg);border-color:var(--red-line)}
+  .cell.off{background:transparent;border-style:dashed}
+  .cell.breach{border-color:var(--red);box-shadow:0 0 0 1.5px var(--red) inset}
+  .cell.today{box-shadow:0 0 0 1.5px var(--accent) inset}
+  .cell.breach.today{box-shadow:0 0 0 1.5px var(--red) inset}
+  .d{font-size:12px;color:var(--muted);width:22px;height:22px;display:grid;place-items:center;border-radius:50%}
+  .cell.today .d{background:var(--purple);color:#fff;font-weight:700}
+  .val{text-align:center;min-width:0;margin:0 -3px}
+  .amt{font-weight:700;font-size:clamp(9px,2.7vw,13px);white-space:nowrap;overflow:hidden;letter-spacing:-.01em}
+  .cnt{font-size:9px;color:var(--muted);white-space:nowrap}
+  .lg{display:none} .sm{display:inline}
+  .pos{color:var(--green)} .neg{color:var(--red)}
+
+  /* stats */
+  .cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:8px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:13px;min-width:0}
+  .card small{display:block;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+  .card b{font-size:20px}
+  .h2{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin:22px 0 10px}
+  .h2:first-child{margin-top:4px}
+  .wk{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:8px}
+  .wk small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+  .wk .v{font-weight:700;font-size:16px;white-space:nowrap}
+  .empty{color:var(--muted);font-size:13px;padding:14px;text-align:center;background:var(--panel);border:1px dashed var(--line);border-radius:12px;line-height:1.45}
+
+  /* equity chart */
+  .eqcard{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:8px}
+  .eqtop{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:12px}
+  .eqtop small{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+  .eqtop b{display:block;font-size:24px;margin-top:2px}
+  .eqtop .sub{font-size:12px;margin-top:2px}
+  .seg{display:flex;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:3px;gap:2px}
+  .seg button{background:none;border:0;color:var(--muted);padding:6px 10px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
+  .seg button.on{background:var(--purple);color:#fff}
+  .eqwrap{position:relative;height:150px}
+  .eq{width:100%;height:100%;display:block}
+  .eq .ln{fill:none;stroke:var(--accent);stroke-width:2;vector-effect:non-scaling-stroke;stroke-linejoin:round;stroke-linecap:round}
+  .eq .bl{stroke:var(--line);stroke-dasharray:4 4;stroke-width:1;vector-effect:non-scaling-stroke}
+  .eq .rl{stroke:var(--accent);stroke-dasharray:3 4;stroke-width:1;vector-effect:non-scaling-stroke;opacity:.7}
+  .dot{position:absolute;width:11px;height:11px;border-radius:50%;background:var(--accent);border:2px solid var(--panel);transform:translate(-50%,-50%)}
+  .eqfoot{display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-size:11px;margin-top:8px}
+  .eqnote{color:var(--muted);font-size:11px;margin-top:6px}
+
+  /* settings */
+  .set{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:12px}
+  .set h3{margin:0 0 4px;font-size:15px}
+  .set p{margin:0 0 12px;color:var(--muted);font-size:13px;line-height:1.45}
+  .lbl{display:block;font-size:12px;color:var(--muted);margin:12px 0 4px}
+  .field{display:flex;gap:8px;align-items:center}
+  .field input{flex:1;min-width:0}
+  .btnrow{display:flex;gap:8px;flex-wrap:wrap}
+  .btn{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px 14px;cursor:pointer}
+  .btn:active{border-color:var(--accent)}
+  .btn.primary{background:linear-gradient(135deg,#7c3aed,#a855f7);border-color:transparent;color:#fff;font-weight:600}
+  .btn.danger{color:var(--red)}
+  .msg{font-size:12px;color:var(--green);margin-top:8px;min-height:16px}
+  .sep{height:1px;background:var(--line);margin:16px 0 4px}
+  .pchips{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}
+  .pc{display:inline-flex;align-items:center;gap:2px;background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:5px 4px 5px 12px;font-size:13px}
+  .pc button{background:none;border:0;color:var(--muted);cursor:pointer;padding:2px 8px;font-size:14px}
+  .rs{display:flex;justify-content:space-between;align-items:center;gap:8px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin-top:8px;font-size:13px}
+  .rs small{display:block;color:var(--muted);font-size:11px}
+  select{background:var(--inputbg);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px 8px;min-width:0}
+  select.unset{color:var(--muted)}
+  option{color:var(--text)}
+
+  /* pages + nav */
+  .page{display:none} .page.on{display:block}
+  .nav{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--navbg);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+  .nav-in{max-width:760px;margin:0 auto;height:var(--nav-h);display:grid;grid-template-columns:repeat(3,1fr)}
+  .tab{position:relative;background:none;border:0;color:var(--muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:11px;font-weight:600;cursor:pointer}
+  .tab svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+  .tab.on{color:var(--text)}
+  .tab.on svg{stroke:var(--accent)}
+  .tab.on::before{content:"";position:absolute;top:0;width:30px;height:3px;border-radius:0 0 4px 4px;background:var(--purple)}
+
+  /* dialog */
+  dialog{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:18px;padding:18px;width:min(460px,94vw);max-height:90vh;overflow:auto}
+  dialog::backdrop{background:var(--backdrop)}
   dialog h2{margin:0 0 4px;font-size:16px}
   .dayTotal{font-size:13px;color:var(--muted);margin-bottom:10px}
-  .dayTotal b{font-size:15px}
-  input{width:100%;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:9px;font:inherit}
-  #trades{display:flex;flex-direction:column;gap:8px;max-height:48vh;overflow:auto;padding-right:2px}
-  .trade{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px;display:grid;grid-template-columns:auto 1fr 1fr auto;gap:6px;align-items:center}
-  .trade .n{grid-column:1/-1;font-size:11px;color:var(--muted)}
-  .trade .note{grid-column:1/-1}
-  .sg{width:38px;height:38px;padding:0;font-size:18px;font-weight:700;border-radius:8px}
-  .sg.p{background:var(--green);border-color:var(--green);color:#fff}
-  .sg.l{background:var(--red);border-color:var(--red);color:#fff}
-  .x{padding:8px 10px;color:var(--muted)}
-  .row{display:flex;gap:8px;margin-top:14px}
-  .addT{width:100%;margin-top:8px;border-style:dashed}
-  @media (max-width:640px){
-    body{padding:10px}
-    .grid{gap:3px}
-    .cell,.week{min-height:66px;padding:4px}
-    .amt{font-size:11px!important}
-    .week small,.cnt,.badge{font-size:9px}
-    .bar .title{min-width:0;font-size:17px}
+  .dayTotal b{font-size:16px}
+  .warn{background:var(--red-bg);border:1px solid var(--red-line);color:var(--red);border-radius:10px;padding:8px 12px;font-size:13px;font-weight:600;margin-bottom:10px}
+  .offbtn{width:100%;margin-bottom:10px}
+  .offbtn.on{background:var(--purple);border-color:transparent;color:#fff;font-weight:600}
+  .offmsg{color:var(--muted);font-size:13px;line-height:1.45;padding:12px;background:var(--panel2);border:1px dashed var(--line);border-radius:12px}
+  input,textarea{width:100%;background:var(--inputbg);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px 8px}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(139,92,246,.25)}
+  #trades{display:flex;flex-direction:column;gap:10px;max-height:46vh;overflow:auto}
+  .trade{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px}
+  .th{display:flex;justify-content:space-between;align-items:center}
+  .th .n{font-size:11px;color:var(--muted)}
+  .r1{display:flex;gap:8px}
+  .amtbox{flex:1;position:relative;min-width:0}
+  .amtbox span{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted);font-weight:600;pointer-events:none}
+  .amtbox input{padding-left:26px;font-weight:600}
+  .amtbox.nosym input{padding-left:8px}
+  .trade select{width:100%}
+  .r3{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  @media (max-width:520px){.r3{grid-template-columns:1fr}}
+  .addp{display:flex;gap:6px;align-items:center}
+  .addp .btn{padding:10px 12px}
+  .sg{width:42px;height:42px;padding:0;font-size:18px;font-weight:700;border-radius:10px;border:1px solid transparent;color:#fff;cursor:pointer;flex:none}
+  .sg.p{background:#10a374} .sg.l{background:#e11d48}
+  .x{background:none;border:0;color:var(--muted);padding:6px 10px;cursor:pointer;font-size:15px}
+  .addT{width:100%;margin-top:10px;border-style:dashed}
+  .row{display:flex;gap:8px;margin-top:16px}
+  .row .btn{padding:10px 12px;white-space:nowrap}
+  .spacer{flex:1}
+
+  @media (max-width:380px){
+    dialog{padding:14px}
+    .row{gap:6px}
+    .row .btn{padding:10px 9px;font-size:14px}
+  }
+  @media (max-width:340px){
+    .cell{padding:3px}
+    .grid,.dows{gap:4px}
+    .amt{font-size:9px}
+  }
+  @media (min-width:560px){
+    .cell{min-height:88px;padding:8px}
+    .amt{font-size:15px}
+    .cnt{font-size:11px}
+    .lg{display:inline} .sm{display:none}
+    .cards{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .hero .big{font-size:38px}
   }
 </style>
 </head>
 <body>
-<h1>PnL Calendar</h1>
+<div class="app">
 
-<div class="bar">
-  <button id="prev" aria-label="Previous month">‹</button>
-  <div class="title" id="title"></div>
-  <button id="next" aria-label="Next month">›</button>
-  <button id="today">Today</button>
-  <div class="spacer"></div>
-  <select id="cur" aria-label="Currency">
-    <option value="$">$</option><option value="€">€</option><option value="£">£</option>
-    <option value="₦">₦</option><option value="">None</option>
-  </select>
-  <button id="exportCsv">CSV</button>
-  <button id="exportJson">Backup</button>
-  <button id="importJson">Restore</button>
-  <input type="file" id="file" accept="application/json" hidden>
+  <div class="top">
+    <div class="brand">
+      <div class="logo"><svg viewBox="0 0 24 24"><rect x="3" y="13" width="4" height="8" rx="1.5"/><rect x="9" y="9" width="4" height="12" rx="1.5"/><rect x="15" y="4" width="4" height="17" rx="1.5"/></svg></div>
+      PnL Calendar
+    </div>
+    <div class="tools">
+      <button class="themeb" id="themeBtn" aria-label="Switch between dark and light mode" title="Dark / light mode">
+        <svg class="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        <svg class="i-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+      <button class="pill" id="today">Today</button>
+    </div>
+  </div>
+
+  <div class="mnav" id="mnav">
+    <button class="ib" id="prev" aria-label="Previous month">‹</button>
+    <div class="title" id="title"></div>
+    <button class="ib" id="next" aria-label="Next month">›</button>
+  </div>
+
+  <!-- Calendar -->
+  <section class="page on" id="pg-calendar">
+    <div class="hero">
+      <small>Month PnL</small>
+      <div class="big" id="heroAmt">–</div>
+      <div class="chips" id="heroChips"></div>
+      <div class="tgt" id="heroTgt" hidden></div>
+    </div>
+    <div class="dows" id="dows"></div>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <!-- Stats -->
+  <section class="page" id="pg-stats">
+    <div id="statsBody"></div>
+  </section>
+
+  <!-- Settings -->
+  <section class="page" id="pg-settings">
+    <div class="set">
+      <h3>Appearance</h3>
+      <p>Switch between dark and light mode. The button at the top does the same.</p>
+      <div class="seg" style="display:inline-flex">
+        <button id="thDark">Dark</button><button id="thLight">Light</button>
+      </div>
+    </div>
+
+    <div class="set">
+      <h3>Currency</h3>
+      <p>The symbol shown next to your amounts.</p>
+      <select id="cur" aria-label="Currency">
+        <option value="$">$ Dollar</option><option value="€">€ Euro</option><option value="£">£ Pound</option>
+        <option value="₦">₦ Naira</option><option value="">None</option>
+      </select>
+    </div>
+
+    <div class="set">
+      <h3>Balance</h3>
+      <p>Set your starting balance and the equity curve will track your account. Leave it empty to track PnL only.</p>
+      <label class="lbl" for="startBal">Starting balance</label>
+      <input id="startBal" inputmode="decimal" placeholder="e.g. 500" autocomplete="off">
+      <div class="sep"></div>
+      <h3 style="margin-top:14px">New account / reset balance</h3>
+      <p>Changed account? Enter the new balance. Every trade you've logged stays exactly as it is.</p>
+      <label class="lbl" for="newBal">New account balance</label>
+      <input id="newBal" inputmode="decimal" placeholder="e.g. 1000" autocomplete="off">
+      <label class="lbl" for="resetDate">Starts from</label>
+      <input id="resetDate" type="date">
+      <div class="btnrow" style="margin-top:12px"><button class="btn primary" id="resetBtn">Reset balance</button></div>
+      <div class="msg" id="resetMsg"></div>
+      <div id="resetList"></div>
+    </div>
+
+    <div class="set">
+      <h3>Goals &amp; limits</h3>
+      <p>The target shows as a progress bar on your calendar. The limit marks any day you lose more than it. It's a warning only, it won't stop you logging.</p>
+      <label class="lbl" for="target">Monthly profit target</label>
+      <input id="target" inputmode="decimal" placeholder="e.g. 500" autocomplete="off">
+      <label class="lbl" for="limit">Daily loss limit</label>
+      <input id="limit" inputmode="decimal" placeholder="e.g. 50" autocomplete="off">
+    </div>
+
+    <div class="set">
+      <h3>My pairs</h3>
+      <p>These appear in the pair dropdown when you log a trade. You can also add one on the spot while logging.</p>
+      <div class="pchips" id="pairChips"></div>
+      <div class="field">
+        <input id="newPairS" placeholder="Add a pair e.g. USDCAD" autocapitalize="characters" autocomplete="off">
+        <button class="btn primary" id="addPairS">Add</button>
+      </div>
+    </div>
+
+    <div class="set">
+      <h3>Backup &amp; restore</h3>
+      <p>Your trades are saved on this device. Back up often, and use Restore on a new phone or browser.</p>
+      <div class="btnrow">
+        <button class="btn primary" id="exportJson">Backup</button>
+        <button class="btn" id="importJson">Restore</button>
+      </div>
+      <input type="file" id="file" accept="application/json" hidden>
+    </div>
+
+    <div class="set">
+      <h3>Export trades</h3>
+      <p>Download every trade as a CSV file you can open in Excel or Google Sheets.</p>
+      <button class="btn" id="exportCsv">Download CSV</button>
+    </div>
+  </section>
+
 </div>
 
-<div class="stats" id="stats"></div>
-<div class="grid" id="grid"></div>
+<nav class="nav">
+  <div class="nav-in">
+    <button class="tab on" data-t="calendar">
+      <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>Calendar
+    </button>
+    <button class="tab" data-t="stats">
+      <svg viewBox="0 0 24 24"><path d="M5 20v-7M12 20V5M19 20v-11"/></svg>Stats
+    </button>
+    <button class="tab" data-t="settings">
+      <svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>Settings
+    </button>
+  </div>
+</nav>
 
 <dialog id="dlg">
   <h2 id="dlgTitle"></h2>
   <div class="dayTotal">Day total: <b id="dlgTotal">–</b></div>
-  <div id="trades"></div>
-  <button type="button" class="addT" id="addT">+ Add trade</button>
+  <div class="warn" id="dlgWarn" hidden>Daily loss limit reached</div>
+  <button type="button" class="btn offbtn" id="offT" aria-pressed="false">I didn't trade this day</button>
+  <div id="tradesWrap">
+    <div id="trades"></div>
+    <button type="button" class="btn addT" id="addT">+ Add trade</button>
+  </div>
+  <div class="offmsg" id="offMsg" hidden>Marked as a no-trade day. It won't break your streak or count towards it.</div>
   <div class="row">
-    <button class="danger" id="clear" type="button">Clear day</button>
+    <button class="btn danger" id="clear" type="button">Clear day</button>
     <div class="spacer"></div>
-    <button id="cancel" type="button">Cancel</button>
-    <button class="primary" id="save" type="button">Save</button>
+    <button class="btn" id="cancel" type="button">Cancel</button>
+    <button class="btn primary" id="save" type="button">Save</button>
   </div>
 </dialog>
 
@@ -110,40 +360,182 @@
 const KEY = 'pnl-calendar-v1';
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DOW = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const REASONS = ['Setup confirmation','Guessing','FOMO','Revenge trade','Overtrading / boredom','Following a signal','News trade','Moved SL / broke plan','Early exit (fear)','Held too long (greed)'];
+const SESSIONS = ['Asia','London','New York'];
+const DEFAULT_PAIRS = ['EURUSD','GBPUSD','USDJPY','XAUUSD','GBPJPY'];
 
-let store = { currency: '$', days: {} };
-try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.days) store = { currency: '$', ...s }; } catch (e) {}
+let store = {};
+try { store = JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { store = {}; }
 
-// Migrate older entries (one number per day) into a single trade.
 function normalize() {
+  if (!store || typeof store !== 'object') store = {};
+  if (typeof store.currency !== 'string') store.currency = '$';
+  store.theme = store.theme === 'light' ? 'light' : 'dark';
+  if (!store.days || typeof store.days !== 'object') store.days = {};
   for (const k of Object.keys(store.days)) {
-    const d = store.days[k];
+    let d = store.days[k];
+    if (!d || typeof d !== 'object') { delete store.days[k]; continue; }
     if (!Array.isArray(d.trades)) {
-      store.days[k] = { trades: [{ pnl: Number(d.pnl) || 0, pair: '', note: d.note || '' }] };
+      // oldest format: one number per day
+      d = store.days[k] = { trades: [{ pnl: Number(d.pnl) || 0, note: d.note || '' }] };
     }
+    d.trades = d.trades.map(t => ({
+      pnl: Number(t.pnl) || 0, pair: t.pair || '', reason: t.reason || '', session: t.session || '', note: t.note || ''
+    }));
+    if (d.trades.length) delete d.off;
+    else if (!d.off) delete store.days[k];
   }
+  if (!Array.isArray(store.pairs)) {
+    // first run of this version: start with common pairs plus anything already typed
+    store.pairs = DEFAULT_PAIRS.slice();
+    for (const k in store.days) store.days[k].trades.forEach(t => {
+      if (t.pair && !store.pairs.includes(t.pair)) store.pairs.push(t.pair);
+    });
+  }
+  const sb = store.startBalance;
+  store.startBalance = (sb === null || sb === undefined || sb === '' || isNaN(Number(sb))) ? null : Number(sb);
+  if (!Array.isArray(store.resets)) store.resets = [];
+  store.resets = store.resets
+    .filter(r => r && /^\d{4}-\d{2}-\d{2}$/.test(r.date) && !isNaN(Number(r.balance)))
+    .map(r => ({ date: r.date, balance: Number(r.balance) }))
+    .sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+  store.target = Math.abs(Number(store.target)) || 0;
+  store.lossLimit = Math.abs(Number(store.lossLimit)) || 0;
+  if (typeof store.lastPair !== 'string') store.lastPair = '';
 }
 normalize();
 const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(store)); } catch (e) {} };
 
 const now = new Date();
 let view = { y: now.getFullYear(), m: now.getMonth() };
-let editing = null, draft = [];
+let editing = null, draft = [], draftOff = false, eqMode = 'account';
 
 const $ = id => document.getElementById(id);
 const pad = n => String(n).padStart(2, '0');
 const keyOf = (y, m, d) => `${y}-${pad(m + 1)}-${pad(d)}`;
+const todayKey = () => keyOf(now.getFullYear(), now.getMonth(), now.getDate());
 const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
 const dayTotal = d => d.trades.reduce((a, t) => a + t.pnl, 0);
-
-function money(n, short) {
-  const c = store.currency, a = Math.abs(n);
-  const s = (short && a >= 10000) ? (a / 1000).toFixed(1) + 'k'
-    : a.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-  return (n < 0 ? '-' : n > 0 ? '+' : '') + c + s;
-}
+const hasTrades = e => !!(e && e.trades.length);
+const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+const num = s => parseFloat(String(s).replace(/,/g, ''));
 const cls = n => n > 0 ? 'pos' : n < 0 ? 'neg' : '';
+const allTradeKeys = () => Object.keys(store.days).filter(k => hasTrades(store.days[k])).sort();
+function fd(k) {
+  if (!k) return '';
+  const [y, m, d] = k.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+}
 
+// $1,234.50  /  -$80
+function fmt(n) {
+  const a = Math.abs(n);
+  return (n < 0 ? '-' : '') + store.currency + a.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+}
+// +$1,234.50  /  -$80
+function money(n) {
+  return (n > 0 ? '+' : '') + fmt(n);
+}
+// Short form for calendar boxes so it always fits: $45, -$1.2k, $9.9
+function cellMoney(n) {
+  const c = store.currency, a = Math.abs(n); let s;
+  if (a >= 999.5) s = (a / 1000).toFixed(a >= 10000 ? 0 : 1).replace(/\.0$/, '') + 'k';
+  else if (a >= 10) s = String(Math.round(a));
+  else if (a >= 1) s = String(Number(a.toFixed(1)));
+  else s = String(Number(a.toFixed(2)));
+  return (n < 0 ? '-' : '') + c + s;
+}
+
+/* ---------- Streaks (only days you traded count) ---------- */
+function streaks() {
+  let cur = { type: 0, n: 0 }, bestW = 0, worstL = 0;
+  for (const k of allTradeKeys()) {
+    const t = dayTotal(store.days[k]);
+    const s = t > 0 ? 1 : t < 0 ? -1 : 0;
+    if (s === 0) continue; // break-even day: neither breaks nor counts
+    if (s === cur.type) cur.n++; else cur = { type: s, n: 1 };
+    if (s === 1) bestW = Math.max(bestW, cur.n); else worstL = Math.max(worstL, cur.n);
+  }
+  return { cur, bestW, worstL };
+}
+
+/* ---------- Balance & equity ---------- */
+function equityCore(mode) {
+  const keys = allTradeKeys(), resets = store.resets;
+  const hasBal = store.startBalance !== null || resets.length > 0;
+  const sb = store.startBalance || 0;
+  let pnl = 0;
+  if (mode === 'account') {
+    let base = sb, from = '';
+    if (resets.length) { const r = resets[resets.length - 1]; base = r.balance; from = r.date; }
+    let run = base;
+    const pts = [{ k: from || keys[0] || '', v: run }];
+    keys.forEach(k => {
+      if (from && k < from) return;
+      const d = dayTotal(store.days[k]); run += d; pnl += d; pts.push({ k, v: run });
+    });
+    return { pts, cur: run, pnl, hasBal, resetIdx: [] };
+  }
+  let run = sb, ri = 0;
+  const pts = [{ k: keys[0] || '', v: run }], resetIdx = [];
+  const applyReset = () => { const r = resets[ri++]; run = r.balance; pts.push({ k: r.date, v: run }); resetIdx.push(pts.length - 1); };
+  keys.forEach(k => {
+    while (ri < resets.length && resets[ri].date <= k) applyReset();
+    const d = dayTotal(store.days[k]); run += d; pnl += d; pts.push({ k, v: run });
+  });
+  while (ri < resets.length) applyReset();
+  return { pts, cur: run, pnl, hasBal, resetIdx };
+}
+
+function chartHTML(eq) {
+  const pts = eq.pts;
+  if (pts.length < 2) return '<div class="empty">Log a few trades and your equity curve will show here.</div>';
+  const W = 320, H = 140, P = 10, PX = 6;
+  let min = Math.min(...pts.map(p => p.v)), max = Math.max(...pts.map(p => p.v));
+  if (max === min) { max += 1; min -= 1; }
+  const n = pts.length;
+  const X = i => PX + i / (n - 1) * (W - 2 * PX);
+  const Y = v => P + (1 - (v - min) / (max - min)) * (H - 2 * P);
+  const line = pts.map((p, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(p.v).toFixed(1)).join(' ');
+  const area = `${line} L${X(n - 1).toFixed(1)} ${H} L${X(0).toFixed(1)} ${H} Z`;
+  const by = Y(pts[0].v).toFixed(1);
+  const rl = eq.resetIdx.map(i => `<line class="rl" x1="${X(i).toFixed(1)}" x2="${X(i).toFixed(1)}" y1="0" y2="${H}"/>`).join('');
+  const last = pts[n - 1];
+  return `
+    <div class="eqwrap">
+      <svg class="eq" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-label="Equity curve">
+        <defs><linearGradient id="eqg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8b5cf6" stop-opacity=".4"/><stop offset="1" stop-color="#8b5cf6" stop-opacity="0"/></linearGradient></defs>
+        <line class="bl" x1="0" x2="${W}" y1="${by}" y2="${by}"/>
+        ${rl}
+        <path d="${area}" fill="url(#eqg)" stroke="none"/>
+        <path class="ln" d="${line}"/>
+      </svg>
+      <div class="dot" style="left:${(X(n - 1) / W * 100).toFixed(2)}%;top:${(Y(last.v) / H * 100).toFixed(2)}%"></div>
+    </div>
+    <div class="eqfoot"><span>${pts[0].k ? fd(pts[0].k) : 'Start'}</span><span>High ${fmt(max)} · Low ${fmt(min)}</span><span>${fd(last.k)}</span></div>
+    ${eq.resetIdx.length ? '<div class="eqnote">Dashed vertical lines mark a new account.</div>' : ''}`;
+}
+
+/* ---------- Breakdown tables ---------- */
+function breakdown(field) {
+  const map = {};
+  for (const k of allTradeKeys()) for (const t of store.days[k].trades) {
+    const name = t[field] || 'Not set';
+    const o = map[name] || (map[name] = { n: 0, w: 0, l: 0, pnl: 0 });
+    o.n++; o.pnl += t.pnl; if (t.pnl > 0) o.w++; else if (t.pnl < 0) o.l++;
+  }
+  return Object.entries(map).sort((a, b) => b[1].pnl - a[1].pnl);
+}
+function rowsHTML(list, emptyMsg) {
+  if (!list.length || (list.length === 1 && list[0][0] === 'Not set')) return `<div class="empty">${emptyMsg}</div>`;
+  return list.map(([name, o]) => {
+    const dec = o.w + o.l;
+    const wr = dec ? Math.round(o.w / dec * 100) + '% win' : '–';
+    return `<div class="wk"><div><b>${esc(name)}</b><small>${plural(o.n, 'trade')} · ${wr}</small></div><div class="v ${cls(o.pnl)}">${money(o.pnl)}</div></div>`;
+  }).join('');
+}
+
+/* ---------- Render ---------- */
 function render() {
   const { y, m } = view;
   $('title').textContent = `${MONTHS[m]} ${y}`;
@@ -152,73 +544,214 @@ function render() {
   const offset = (new Date(y, m, 1).getDay() + 6) % 7;
   const dim = new Date(y, m + 1, 0).getDate();
   const weeks = Math.ceil((offset + dim) / 7);
-  const todayKey = keyOf(now.getFullYear(), now.getMonth(), now.getDate());
+  const tk = todayKey();
 
-  let html = DOW.map(d => `<div class="dow">${d}</div>`).join('') + '<div class="dow">Week</div>';
-  let total = 0, winDays = 0, lossDays = 0, best = null, worst = null, loggedDays = 0;
+  let html = '';
+  let total = 0, winDays = 0, lossDays = 0, offDays = 0, breaches = 0, best = null, worst = null, loggedDays = 0;
   let nTrades = 0, tWins = 0, tLosses = 0;
+  const wk = [];
 
   for (let w = 0; w < weeks; w++) {
-    let wsum = 0, wDays = 0, wTrades = 0;
+    let wsum = 0, wDays = 0, wTrades = 0, first = null, last = null;
     for (let i = 0; i < 7; i++) {
       const day = w * 7 + i - offset + 1;
       if (day < 1 || day > dim) { html += '<div class="cell empty"></div>'; continue; }
+      if (first === null) first = day;
+      last = day;
       const k = keyOf(y, m, day), e = store.days[k];
       let c = 'cell', body = '';
-      if (e) {
+      if (hasTrades(e)) {
         const p = dayTotal(e), n = e.trades.length;
         wsum += p; wDays++; wTrades += n; total += p; loggedDays++; nTrades += n;
         e.trades.forEach(t => { if (t.pnl > 0) tWins++; else if (t.pnl < 0) tLosses++; });
         if (p > 0) { winDays++; c += ' win'; } else if (p < 0) { lossDays++; c += ' loss'; }
+        if (store.lossLimit > 0 && p <= -store.lossLimit) { c += ' breach'; breaches++; }
         if (best === null || p > best) best = p;
         if (worst === null || p < worst) worst = p;
-        body = `<div><div class="amt ${cls(p)}">${money(p, true)}</div><div class="cnt">${n} trade${n === 1 ? '' : 's'}</div></div>`;
+        body = `<div class="val"><div class="amt ${cls(p)}">${cellMoney(p)}</div><div class="cnt"><span class="lg">${plural(n, 'trade')}</span><span class="sm">${n}×</span></div></div>`;
+      } else if (e && e.off) {
+        offDays++; c += ' off';
+        body = `<div class="val"><div class="cnt"><span class="lg">No trade</span><span class="sm">Off</span></div></div>`;
       }
-      if (k === todayKey) c += ' today';
+      if (k === tk) c += ' today';
       html += `<div class="${c}" data-k="${k}"><div class="d">${day}</div>${body}</div>`;
     }
-    html += `<div class="week"><small>Wk ${w + 1}</small>${wDays
-      ? `<div><div class="amt ${cls(wsum)}">${money(wsum, true)}</div><div class="cnt">${wTrades} trade${wTrades === 1 ? '' : 's'}</div></div>`
-      : '<div class="amt" style="color:var(--muted)">–</div>'}</div>`;
+    wk.push({ n: w + 1, first, last, wsum, wDays, wTrades });
   }
   $('grid').innerHTML = html;
 
   const decided = tWins + tLosses;
   const rate = decided ? Math.round(tWins / decided * 100) + '%' : '–';
   const avgT = nTrades ? total / nTrades : 0;
-  $('stats').innerHTML = [
-    ['Month PnL', loggedDays ? money(total) : '–', cls(total)],
-    ['Trades', nTrades || '–', ''],
-    ['Trade win rate', rate, ''],
-    ['Win / Loss days', `${winDays} / ${lossDays}`, ''],
-    ['Best day', best === null ? '–' : money(best), cls(best)],
-    ['Worst day', worst === null ? '–' : money(worst), cls(worst)],
-    ['Avg / trade', nTrades ? money(avgT) : '–', cls(avgT)],
-  ].map(([l, v, c]) => `<div class="stat"><small>${l}</small><b class="${c}">${v}</b></div>`).join('');
+  const acct = equityCore('account');
+
+  // hero
+  $('heroAmt').textContent = loggedDays ? money(total) : 'No trades yet';
+  const chips = loggedDays
+    ? [plural(nTrades, 'trade'), decided ? `${rate} win rate` : null, plural(loggedDays, 'day') + ' logged']
+    : ['Tap a day to log your first trade'];
+  if (acct.hasBal) chips.push('Balance ' + fmt(acct.cur));
+  $('heroChips').innerHTML = chips.filter(Boolean).map(t => `<span class="chip">${t}</span>`).join('');
+  const tg = $('heroTgt');
+  if (store.target > 0) {
+    const pct = total / store.target * 100;
+    tg.hidden = false;
+    tg.innerHTML = `<div class="tgt-row"><span>Monthly target</span><b>${fmt(total)} / ${fmt(store.target)} · ${Math.round(pct)}%</b></div><div class="bar"><i style="width:${Math.max(0, Math.min(100, pct)).toFixed(1)}%"></i></div>`;
+  } else tg.hidden = true;
+
+  // stats page
+  const st = streaks();
+  const eq = equityCore(eqMode);
+  const curTxt = st.cur.n ? plural(st.cur.n, st.cur.type > 0 ? 'win' : 'loss').replace('loss', st.cur.n === 1 ? 'loss' : 'losses') : '–';
+  const card = (l, v, c = '') => `<div class="card"><small>${l}</small><b class="${c}">${v}</b></div>`;
+  const mon = MONTHS[m].slice(0, 3);
+  $('statsBody').innerHTML = `
+    <div class="h2">Equity curve</div>
+    <div class="eqcard">
+      <div class="eqtop">
+        <div>
+          <small>${eq.hasBal ? 'Balance' : 'Total PnL'}</small>
+          <b>${fmt(eq.cur)}</b>
+          <div class="sub ${cls(eq.pnl)}">${eq.pnl ? money(eq.pnl) + ' trading PnL' : 'No trades yet'}</div>
+        </div>
+        ${store.resets.length ? `<div class="seg"><button data-eq="account" class="${eqMode === 'account' ? 'on' : ''}">This account</button><button data-eq="all" class="${eqMode === 'all' ? 'on' : ''}">All time</button></div>` : ''}
+      </div>
+      ${chartHTML(eq)}
+    </div>
+
+    <div class="h2">${MONTHS[m]} ${y}</div>
+    <div class="cards">
+      ${card('Month PnL', loggedDays ? money(total) : '–', cls(total))}
+      ${card('Trades', nTrades || '–')}
+      ${card('Trade win rate', rate)}
+      ${card('Win / Loss days', `${winDays} / ${lossDays}`)}
+      ${card('Best day', best === null ? '–' : money(best), cls(best))}
+      ${card('Worst day', worst === null ? '–' : money(worst), cls(worst))}
+      ${card('Avg / trade', nTrades ? money(avgT) : '–', cls(avgT))}
+      ${card('No-trade days', offDays || '–')}
+      ${store.lossLimit > 0 ? card('Loss limit hit', breaches ? plural(breaches, 'day') : 'Never', breaches ? 'neg' : 'pos') : ''}
+    </div>
+
+    <div class="h2">Streaks · all time</div>
+    <div class="cards">
+      ${card('Current streak', curTxt, st.cur.type > 0 ? 'pos' : st.cur.type < 0 ? 'neg' : '')}
+      ${card('Best win streak', st.bestW ? plural(st.bestW, 'day') : '–', st.bestW ? 'pos' : '')}
+      ${card('Longest loss streak', st.worstL ? plural(st.worstL, 'day') : '–', st.worstL ? 'neg' : '')}
+    </div>
+
+    <div class="h2">Why you trade · all time</div>
+    ${rowsHTML(breakdown('reason'), 'Pick a reason on your trades to see which ones make you money.')}
+    <div class="h2">Pairs · all time</div>
+    ${rowsHTML(breakdown('pair'), 'Pick a pair on your trades to see how each one performs.')}
+    <div class="h2">Sessions · all time</div>
+    ${rowsHTML(breakdown('session'), 'Add a session to your trades to see when you trade best. It is optional.')}
+
+    <div class="h2">Weekly breakdown · ${MONTHS[m]}</div>
+    ${wk.map(x => `
+      <div class="wk">
+        <div><b>Week ${x.n}</b><small>${mon} ${x.first}–${x.last} · ${plural(x.wTrades, 'trade')}</small></div>
+        <div class="v ${cls(x.wsum)}">${x.wDays ? money(x.wsum) : '–'}</div>
+      </div>`).join('')}`;
+
+  renderSettings(acct);
 }
 
+function renderSettings(acct) {
+  acct = acct || equityCore('account');
+  $('startBal').value = store.startBalance === null ? '' : store.startBalance;
+  $('target').value = store.target || '';
+  $('limit').value = store.lossLimit || '';
+  if (!$('resetDate').value) $('resetDate').value = todayKey();
+  $('thDark').classList.toggle('on', store.theme === 'dark');
+  $('thLight').classList.toggle('on', store.theme === 'light');
+  $('pairChips').innerHTML = store.pairs.length
+    ? store.pairs.map((p, i) => `<span class="pc">${esc(p)}<button data-delpair="${i}" aria-label="Remove ${esc(p)}">✕</button></span>`).join('')
+    : '<span style="color:var(--muted);font-size:13px">No pairs yet. Add one below.</span>';
+  $('resetList').innerHTML = store.resets.map(r =>
+    `<div class="rs"><div><b>${fmt(r.balance)}</b><small>New account from ${fd(r.date)}</small></div><button class="x" data-delreset="${r.date}" aria-label="Remove reset">✕</button></div>`).join('');
+}
+
+function flash(id, text) {
+  $(id).textContent = text;
+  setTimeout(() => { if ($(id).textContent === text) $(id).textContent = ''; }, 3500);
+}
+
+/* ---------- Theme ---------- */
+function applyTheme() {
+  document.documentElement.setAttribute('data-theme', store.theme);
+  const mt = document.querySelector('meta[name="theme-color"]');
+  if (mt) mt.setAttribute('content', store.theme === 'light' ? '#f5f2ff' : '#0d0a1a');
+}
+function setTheme(t) { store.theme = t; persist(); applyTheme(); renderSettings(); }
+$('themeBtn').onclick = () => setTheme(store.theme === 'dark' ? 'light' : 'dark');
+$('thDark').onclick = () => setTheme('dark');
+$('thLight').onclick = () => setTheme('light');
+
+/* ---------- Tabs ---------- */
+function show(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.toggle('on', p.id === 'pg-' + name));
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.t === name));
+  const settings = name === 'settings';
+  $('mnav').style.display = settings ? 'none' : 'flex';
+  $('today').style.display = settings ? 'none' : '';
+  window.scrollTo(0, 0);
+}
+document.querySelector('.nav').addEventListener('click', ev => {
+  const t = ev.target.closest('.tab'); if (t) show(t.dataset.t);
+});
+$('statsBody').addEventListener('click', ev => {
+  const b = ev.target.closest('[data-eq]');
+  if (b) { eqMode = b.dataset.eq; render(); }
+});
+
 /* ---------- Day dialog ---------- */
+const newTrade = () => ({ sign: 1, amount: '', pair: store.lastPair || '', reason: '', session: '', note: '', adding: false, newPair: '' });
+
 function draftTotal() {
   let sum = 0, any = false;
   draft.forEach(t => {
-    const v = parseFloat(String(t.amount).replace(/,/g, ''));
+    const v = num(t.amount);
     if (!isNaN(v)) { sum += t.sign * Math.abs(v); any = true; }
   });
   const el = $('dlgTotal');
-  el.textContent = any ? money(sum) : '–';
-  el.className = any ? cls(sum) : '';
+  if (draftOff) { el.textContent = 'No-trade day'; el.className = ''; }
+  else { el.textContent = any ? money(sum) : '–'; el.className = any ? cls(sum) : ''; }
+  $('dlgWarn').hidden = !(!draftOff && any && store.lossLimit > 0 && sum <= -store.lossLimit);
+}
+
+function selectHTML(field, list, placeholder, value, extra = '') {
+  const opts = list.slice();
+  if (value && !opts.includes(value)) opts.push(value);
+  return `<select data-f="${field}" class="${value ? '' : 'unset'}"><option value="">${placeholder}</option>${opts.map(o => `<option value="${esc(o)}"${o === value ? ' selected' : ''}>${esc(o)}</option>`).join('')}${extra}</select>`;
+}
+
+function tradeHTML(t, i) {
+  const pairField = t.adding
+    ? `<div class="addp"><input data-f="newPair" placeholder="New pair e.g. GBPJPY" value="${esc(t.newPair)}" autocapitalize="characters" autocomplete="off"><button type="button" class="btn primary" data-act="addpair">Add</button><button type="button" class="x" data-act="cancelpair" aria-label="Cancel">✕</button></div>`
+    : selectHTML('pair', store.pairs, 'Pair', t.pair, '<option value="__add">+ Add new pair…</option>');
+  return `
+    <div class="trade" data-i="${i}">
+      <div class="th"><span class="n">Trade ${i + 1}</span><button type="button" class="x" data-act="del" title="Remove trade" aria-label="Remove trade">✕</button></div>
+      <div class="r1">
+        <button type="button" class="sg ${t.sign > 0 ? 'p' : 'l'}" data-act="sign" title="Tap to switch profit/loss">${t.sign > 0 ? '+' : '−'}</button>
+        <div class="amtbox${store.currency ? '' : ' nosym'}">${store.currency ? `<span>${esc(store.currency)}</span>` : ''}<input data-f="amount" inputmode="decimal" placeholder="0.00" value="${esc(t.amount)}" autocomplete="off"></div>
+      </div>
+      ${pairField}
+      <div class="r3">
+        ${selectHTML('reason', REASONS, 'Reason', t.reason)}
+        ${selectHTML('session', SESSIONS, 'Session (optional)', t.session)}
+      </div>
+      <input class="note" data-f="note" placeholder="Note (optional)" value="${esc(t.note)}" autocomplete="off">
+    </div>`;
 }
 
 function renderDraft() {
-  $('trades').innerHTML = draft.map((t, i) => `
-    <div class="trade" data-i="${i}">
-      <div class="n">Trade ${i + 1}</div>
-      <button type="button" class="sg ${t.sign > 0 ? 'p' : 'l'}" data-act="sign" title="Tap to switch profit/loss">${t.sign > 0 ? '+' : '−'}</button>
-      <input data-f="amount" inputmode="decimal" placeholder="Amount" value="${esc(t.amount)}" autocomplete="off">
-      <input data-f="pair" placeholder="Pair (e.g. EURUSD)" value="${esc(t.pair)}" autocomplete="off">
-      <button type="button" class="x" data-act="del" title="Remove trade">✕</button>
-      <input class="note" data-f="note" placeholder="Note (optional)" value="${esc(t.note)}" autocomplete="off">
-    </div>`).join('');
+  $('trades').innerHTML = draft.map(tradeHTML).join('');
+  $('offT').classList.toggle('on', draftOff);
+  $('offT').setAttribute('aria-pressed', String(draftOff));
+  $('offT').textContent = draftOff ? "Didn't trade: tap to undo" : "I didn't trade this day";
+  $('tradesWrap').hidden = draftOff;
+  $('offMsg').hidden = !draftOff;
   draftTotal();
 }
 
@@ -227,43 +760,89 @@ function openDay(k) {
   const e = store.days[k];
   const [y, mo, d] = k.split('-').map(Number);
   $('dlgTitle').textContent = new Date(y, mo - 1, d).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-  draft = e
-    ? e.trades.map(t => ({ sign: t.pnl < 0 ? -1 : 1, amount: String(Math.abs(t.pnl)), pair: t.pair || '', note: t.note || '' }))
-    : [{ sign: 1, amount: '', pair: '', note: '' }];
+  draftOff = !!(e && e.off && !hasTrades(e));
+  draft = hasTrades(e)
+    ? e.trades.map(t => ({ sign: t.pnl < 0 ? -1 : 1, amount: String(Math.abs(t.pnl)), pair: t.pair, reason: t.reason, session: t.session, note: t.note, adding: false, newPair: '' }))
+    : [newTrade()];
   $('clear').style.visibility = e ? 'visible' : 'hidden';
   renderDraft();
   $('dlg').showModal();
   if (!e) { const a = $('trades').querySelector('[data-f="amount"]'); a && a.focus(); }
 }
 
+function commitPair(t) {
+  const name = String(t.newPair || '').toUpperCase().replace(/[^A-Z0-9/._-]/g, '');
+  t.adding = false; t.newPair = '';
+  if (name) {
+    if (!store.pairs.includes(name)) store.pairs.push(name);
+    t.pair = name; persist();
+  }
+}
+
 $('trades').addEventListener('input', ev => {
-  const row = ev.target.closest('.trade'); if (!row || !ev.target.dataset.f) return;
-  draft[+row.dataset.i][ev.target.dataset.f] = ev.target.value;
-  draftTotal();
+  const el = ev.target, row = el.closest('.trade');
+  if (!row || !el.dataset.f || el.tagName === 'SELECT') return;
+  draft[+row.dataset.i][el.dataset.f] = el.value;
+  if (el.dataset.f === 'amount') draftTotal();
+});
+$('trades').addEventListener('change', ev => {
+  const el = ev.target, row = el.closest('.trade');
+  if (!row || el.tagName !== 'SELECT') return;
+  const i = +row.dataset.i, t = draft[i];
+  if (el.dataset.f === 'pair' && el.value === '__add') {
+    t.adding = true; t.newPair = ''; renderDraft();
+    const inp = $('trades').querySelector(`.trade[data-i="${i}"] [data-f="newPair"]`); inp && inp.focus();
+    return;
+  }
+  t[el.dataset.f] = el.value;
+  el.classList.toggle('unset', !el.value);
+});
+$('trades').addEventListener('keydown', ev => {
+  const el = ev.target;
+  if (ev.key === 'Enter' && el.dataset && el.dataset.f === 'newPair') {
+    ev.preventDefault();
+    commitPair(draft[+el.closest('.trade').dataset.i]); renderDraft(); renderSettings();
+  }
 });
 $('trades').addEventListener('click', ev => {
   const btn = ev.target.closest('button[data-act]'); if (!btn) return;
-  const i = +btn.closest('.trade').dataset.i;
-  if (btn.dataset.act === 'sign') draft[i].sign *= -1;
-  if (btn.dataset.act === 'del') { draft.splice(i, 1); if (!draft.length) draft.push({ sign: 1, amount: '', pair: '', note: '' }); }
+  const i = +btn.closest('.trade').dataset.i, t = draft[i];
+  const act = btn.dataset.act;
+  if (act === 'sign') t.sign *= -1;
+  else if (act === 'del') { draft.splice(i, 1); if (!draft.length) draft.push(newTrade()); }
+  else if (act === 'addpair') { commitPair(t); renderSettings(); }
+  else if (act === 'cancelpair') { t.adding = false; t.newPair = ''; }
   renderDraft();
 });
 $('addT').onclick = () => {
-  draft.push({ sign: 1, amount: '', pair: '', note: '' });
+  const prev = draft[draft.length - 1];
+  const t = newTrade();
+  if (prev && prev.pair) t.pair = prev.pair;
+  draft.push(t);
   renderDraft();
   const rows = $('trades').querySelectorAll('.trade');
   const last = rows[rows.length - 1];
   last.scrollIntoView({ block: 'nearest' });
   last.querySelector('[data-f="amount"]').focus();
 };
+$('offT').onclick = () => { draftOff = !draftOff; renderDraft(); };
 $('cancel').onclick = () => $('dlg').close();
 $('save').onclick = () => {
-  const trades = [];
-  draft.forEach(t => {
-    const v = parseFloat(String(t.amount).replace(/,/g, ''));
-    if (!isNaN(v)) trades.push({ pnl: t.sign * Math.abs(v), pair: t.pair.trim(), note: t.note.trim() });
-  });
-  if (trades.length) store.days[editing] = { trades }; else delete store.days[editing];
+  if (draftOff) {
+    store.days[editing] = { off: true, trades: [] };
+  } else {
+    draft.forEach(t => { if (t.adding) commitPair(t); });
+    const trades = [];
+    draft.forEach(t => {
+      const v = num(t.amount);
+      if (!isNaN(v)) trades.push({ pnl: t.sign * Math.abs(v), pair: t.pair.trim(), reason: t.reason, session: t.session, note: t.note.trim() });
+    });
+    if (trades.length) {
+      store.days[editing] = { trades };
+      const lp = trades.slice().reverse().find(t => t.pair);
+      if (lp) store.lastPair = lp.pair;
+    } else delete store.days[editing];
+  }
   persist(); $('dlg').close(); render();
 };
 $('clear').onclick = () => { delete store.days[editing]; persist(); $('dlg').close(); render(); };
@@ -278,6 +857,42 @@ $('next').onclick = () => { view.m++; if (view.m > 11) { view.m = 0; view.y++; }
 $('today').onclick = () => { view = { y: now.getFullYear(), m: now.getMonth() }; render(); };
 $('cur').onchange = e => { store.currency = e.target.value; persist(); render(); };
 
+/* ---------- Settings handlers ---------- */
+$('startBal').onchange = e => {
+  const v = num(e.target.value);
+  store.startBalance = isNaN(v) ? null : v;
+  persist(); render();
+};
+$('target').onchange = e => { const v = num(e.target.value); store.target = isNaN(v) ? 0 : Math.abs(v); persist(); render(); };
+$('limit').onchange = e => { const v = num(e.target.value); store.lossLimit = isNaN(v) ? 0 : Math.abs(v); persist(); render(); };
+$('resetBtn').onclick = () => {
+  const v = num($('newBal').value);
+  if (isNaN(v)) { flash('resetMsg', 'Enter the new account balance first.'); $('newBal').focus(); return; }
+  const date = $('resetDate').value || todayKey();
+  store.resets = store.resets.filter(r => r.date !== date);
+  store.resets.push({ date, balance: v });
+  store.resets.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+  persist(); $('newBal').value = ''; render();
+  flash('resetMsg', 'Balance reset. Your trade logs were not changed.');
+};
+$('resetList').addEventListener('click', ev => {
+  const b = ev.target.closest('[data-delreset]'); if (!b) return;
+  store.resets = store.resets.filter(r => r.date !== b.dataset.delreset);
+  persist(); render();
+});
+function addPairS() {
+  const name = $('newPairS').value.toUpperCase().replace(/[^A-Z0-9/._-]/g, '');
+  if (!name) return;
+  if (!store.pairs.includes(name)) store.pairs.push(name);
+  $('newPairS').value = ''; persist(); renderSettings();
+}
+$('addPairS').onclick = addPairS;
+$('newPairS').addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); addPairS(); } });
+$('pairChips').addEventListener('click', ev => {
+  const b = ev.target.closest('[data-delpair]'); if (!b) return;
+  store.pairs.splice(+b.dataset.delpair, 1); persist(); renderSettings();
+});
+
 /* ---------- Export / import ---------- */
 function download(name, text, type) {
   const a = document.createElement('a');
@@ -290,8 +905,8 @@ $('exportJson').onclick = () => download('pnl-backup.json', JSON.stringify(store
 $('exportCsv').onclick = () => {
   const rows = [];
   Object.keys(store.days).sort().forEach(k =>
-    store.days[k].trades.forEach((t, i) => rows.push(`${k},${i + 1},${q(t.pair)},${t.pnl},${q(t.note)}`)));
-  download('pnl-trades.csv', 'date,trade,pair,pnl,note\n' + rows.join('\n'), 'text/csv');
+    store.days[k].trades.forEach((t, i) => rows.push(`${k},${i + 1},${q(t.pair)},${t.pnl},${q(t.reason)},${q(t.session)},${q(t.note)}`)));
+  download('pnl-trades.csv', 'date,trade,pair,pnl,reason,session,note\n' + rows.join('\n'), 'text/csv');
 };
 $('importJson').onclick = () => $('file').click();
 $('file').onchange = async e => {
@@ -299,12 +914,12 @@ $('file').onchange = async e => {
   try {
     const s = JSON.parse(await f.text());
     if (!s || typeof s.days !== 'object') throw 0;
-    store = { currency: s.currency ?? '$', days: s.days };
-    normalize(); persist(); render();
+    store = s; normalize(); persist(); applyTheme(); render();
   } catch (err) { alert('That file is not a valid PnL backup.'); }
   e.target.value = '';
 };
 
+applyTheme();
 render();
 
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
